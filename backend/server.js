@@ -1,72 +1,92 @@
+// server.js - Backend setup for Twitter features
+
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const bodyParser = require('body-parser');
 
+// Initialize express app
 const app = express();
-app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+// MongoDB connection
+mongoose.connect('mongodb://localhost/tweeter', { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log('MongoDB connected...'))
+    .catch(err => console.log(err));
 
+// User Schema
 const UserSchema = new mongoose.Schema({
-  username: { type: String, unique: true },
-  password: String,
-  bio: String,
-  avatar: String,
-  followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
+    username: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
 });
-
-const TweetSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  content: String,
-  likes: Number,
-  retweets: Number,
-  createdAt: { type: Date, default: Date.now }
-});
-
 const User = mongoose.model('User', UserSchema);
+
+// Tweet Schema
+const TweetSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    content: { type: String, required: true },
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    retweets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+});
 const Tweet = mongoose.model('Tweet', TweetSchema);
 
-const auth = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-  if (!token) return res.status(401).send('Access denied');
-  try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
-    next();
-  } catch (err) {
-    res.status(400).send('Invalid token');
-  }
-};
+// Notification Schema
+const NotificationSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    message: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+});
+const Notification = mongoose.model('Notification', NotificationSchema);
 
-app.post('/api/register', async (req, res) => {
-  const { username, password } = req.body;
-  const hashed = await bcrypt.hash(password, 10);
-  const user = new User({ username, password: hashed });
-  await user.save();
-  res.status(201).send('User created');
+// API Endpoints
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const user = new User(req.body);
+        await user.save();
+        res.status(201).send(user);
+    } catch (err) {
+        res.status(400).send(err);
+    }
 });
 
-app.post('/api/login', async (req, res) => {
-  const user = await User.findOne({ username: req.body.username });
-  if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
-    return res.status(400).send('Invalid credentials');
-  }
-  const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET);
-  res.send({ token });
+app.post('/api/auth/login', async (req, res) => {
+    // login logic
 });
 
-app.get('/api/tweets', auth, async (req, res) => {
-  const tweets = await Tweet.find().populate('user', 'username').sort({ createdAt: -1 });
-  res.send(tweets);
+app.post('/api/tweets', async (req, res) => {
+    // create tweet logic
 });
 
-app.post('/api/tweets', auth, async (req, res) => {
-  const tweet = new Tweet({ user: req.user._id, content: req.body.content, likes: 0, retweets: 0 });
-  await tweet.save();
-  res.status(201).send(tweet);
+app.get('/api/tweets', async (req, res) => {
+    // retrieve tweets logic
 });
 
-app.listen(5000, () => console.log('Server running on port 5000'));
+app.post('/api/tweets/:id/like', async (req, res) => {
+    // like tweet logic
+});
+
+app.post('/api/tweets/:id/retweet', async (req, res) => {
+    // retweet logic
+});
+
+app.get('/api/users/:id', async (req, res) => {
+    // get user profile logic
+});
+
+app.post('/api/users/:id/follow', async (req, res) => {
+    // follow user logic
+});
+
+app.get('/api/search', async (req, res) => {
+    // search tweets logic
+});
+
+app.get('/api/notifications', async (req, res) => {
+    // get notifications logic
+});
+
+// Start server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
