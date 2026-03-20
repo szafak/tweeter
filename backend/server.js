@@ -1,23 +1,31 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-
-dotenv.config();
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const authRoutes = require('./routes/auth');
+const tweetRoutes = require('./routes/tweets');
+const profileRoutes = require('./routes/profiles');
+const searchRoutes = require('./routes/search');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
+
+// Middleware
 app.use(express.json());
 
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+// Database Connection
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log('MongoDB connected'))
+    .catch(err => console.error(err));
 
-// API endpoints
-app.get('/api/tweets', (req, res) => { /* Get tweets */ });
-app.post('/api/tweets', (req, res) => { /* Create tweet */ });
-app.post('/api/auth/login', (req, res) => { /* User login */ });
-app.post('/api/auth/register', (req, res) => { /* User registration */ });
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/tweets', tweetRoutes);
+app.use('/api/profiles', profileRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
